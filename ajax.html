@@ -1,0 +1,105 @@
+CREATE DATABASE hospital_management_system;
+USE hospital_management_system;
+
+CREATE TABLE patients (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    age INT NOT NULL
+);
+<?php
+header('Content-Type: application/json');
+
+$servername = "your_database_server";
+$username = "your_username";
+$password = "your_password";
+$dbname = "hospital_management_system";
+
+$conn = new mysqli($servername, $username, $password, $dbname);
+
+if ($conn->connect_error) {
+    die(json_encode(["error" => "Connection failed: " . $conn->connect_error]));
+}
+
+if ($_SERVER["REQUEST_METHOD"] == "GET") {
+    // Get all patients
+    $patients = array();
+
+    $sql = "SELECT * FROM patients";
+    $result = $conn->query($sql);
+
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $patients[] = $row;
+        }
+    }
+
+    echo json_encode($patients);
+} elseif ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Add a patient
+    $data = json_decode(file_get_contents("php://input"), true);
+
+    $name = mysqli_real_escape_string($conn, $data["name"]);
+    $age = (int)$data["age"];
+
+    $sql = "INSERT INTO patients (name, age) VALUES ('$name', $age)";
+    
+    if ($conn->query($sql) === TRUE) {
+        echo json_encode(["success" => "Patient added successfully!"]);
+    } else {
+        echo json_encode(["error" => "Error: " . $sql . "<br>" . $conn->error]);
+    }
+}
+
+$conn->close();
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Management System API</title>
+</head>
+<body>
+
+<h1>Hospital Management System API</h1>
+
+<button onclick="getAllPatients()">Get All Patients</button>
+
+<div id="patientsList"></div>
+
+<script>
+    function getAllPatients() {
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    var patients = JSON.parse(xhr.responseText);
+                    displayPatients(patients);
+                } else {
+                    console.error("Error fetching patients:", xhr.status, xhr.statusText);
+                }
+            }
+        };
+
+        xhr.open("GET", "api.php", true);
+        xhr.send();
+    }
+
+    function displayPatients(patients) {
+        var patientsList = document.getElementById("patientsList");
+        patientsList.innerHTML = "<h2>All Patients</h2>";
+
+        if (patients.length === 0) {
+            patientsList.innerHTML += "<p>No patients available.</p>";
+        } else {
+            patientsList.innerHTML += "<ul>";
+            patients.forEach(function (patient) {
+                patientsList.innerHTML += "<li>" + patient.name + " (Age: " + patient.age + ")</li>";
+            });
+            patientsList.innerHTML += "</ul>";
+        }
+    }
+</script>
+
+</body>
+</html>
